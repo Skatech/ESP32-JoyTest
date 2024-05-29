@@ -1,0 +1,124 @@
+#ifndef webui_h
+#define webui_h
+
+#include <Arduino.h>
+#include <LittleFS.h>
+// #include <WiFi.h>
+// #include <NetBIOS.h>
+// #include <WebServer.h>
+// #include <WebSocketsServer.h>
+
+#ifdef ESP32
+#include <WiFi.h>
+#include <AsyncTCP.h>
+#elif defined(ESP8266)
+#include <ESP8266WiFi.h>
+#include <ESPAsyncTCP.h>
+#endif
+#include <ESPAsyncWebServer.h>
+
+AsyncWebServer webServer(80);
+AsyncWebSocket wsServer("/ws");
+
+// WebServer webServer(80);
+// WebSocketsServer wsServer(81);
+
+bool sendOrBroadcastJoyState(uint32_t addr);
+
+// void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length) {
+//     if (type == WStype_DISCONNECTED) {
+//         Serial.printf("[%u] Disconnected!\n", num);
+//     }
+//     else if (type == WStype_CONNECTED) {
+//         IPAddress ip = wsServer.remoteIP(num);
+//         Serial.printf("[%u] Connected from %d.%d.%d.%d\n", num, ip[0], ip[1], ip[2], ip[3]);
+//         wsServer.sendTXT(num, "Connected");
+//         sendOrBroadcastJoyState(num);
+//     }
+//     else if (type == WStype_TEXT) {
+//         Serial.printf("[%u] Received text: %s\n", num, payload);
+//         // String echoMessage = "Received:  " + String((char*)payload);
+//         // wsServer.sendTXT(num, echoMessage);
+//         wsServer.broadcastTXT((char*)payload);
+//     }
+//     else if (type == WStype_BIN) {
+//             Serial.printf("[%u] get binary length: %u\n", num, length);
+//             // hexdump(payload, length);
+//             // webSocket.sendBIN(num, payload, length);
+//     }
+//     else if (type == WStype_PONG) {
+//     }
+//     else {
+//         Serial.printf("[%u] Unsupported message type: %u\n", num, type);
+//         wsServer.sendTXT(num, "Unsupported message type");
+//     }
+// }
+
+// bool webSocketSendOrBroadcastText(const String& payload, uint8_t addr = 0xff) {
+//     String& data = const_cast<String&>(payload);
+//     return (addr == 0xff)
+//         ? wsServer.broadcastTXT(data)
+//         : wsServer.sendTXT(addr, data);
+// }
+
+void ___handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
+  AwsFrameInfo *info = (AwsFrameInfo*)arg;
+  if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
+    data[len] = 0;
+    if (strcmp((char*)data, "toggle") == 0) {
+      ledState = !ledState;
+      ws.textAll(String(ledState));
+    }
+  }
+}
+
+void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
+    wsServer.printfAll((char*)data);
+    AwsFrameInfo *info = (AwsFrameInfo *)arg;
+    if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
+        data[len] = 0;
+    }
+}
+
+void onWebSocketEventEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
+            AwsEventType type, void *arg, uint8_t *data, size_t len) {
+    switch (type) {
+    case WS_EVT_CONNECT:
+        Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
+        client->printf("Connected");
+        sendOrBroadcastJoyState(client->id());
+        break;
+    case WS_EVT_DISCONNECT:
+        Serial.printf("WebSocket client #%u disconnected\n", client->id());
+        break;
+    case WS_EVT_DATA:
+        handleWebSocketMessage(arg, data, len);
+        break;
+    case WS_EVT_PONG:
+    case WS_EVT_ERROR:
+        break;
+    }
+}
+
+void initWebUI() {
+    wsServer.onEvent(onWebSocketEventEvent);
+    webServer.addHandler(&wsServer);
+    //webServer.on("/", HTTP_GET, [](AsyncWebServerRequest *request) { request->send_P(200, "text/html", index_html); });
+
+    //Original
+    // wsServer.onEvent(webSocketEvent);
+    // wsServer.begin();
+    // webServer.on("/", HTTP_GET, []() {        
+    //     webServer.sendHeader("Location", "http://" + webServer.hostHeader() + "/index.html", true);
+    //     webServer.send(302, "text/plain", "Redirecting to index page");
+    // });
+    webServer.serveStatic("/", LittleFS, "/webui/", "no-cache").setDefaultFile("index.html"); //"max-age=3600" or "no-cache"
+    webServer.begin();
+}
+
+// void loopWebUI() {
+//     webServer.handleClient();
+//     wsServer.loop();
+// }
+
+#endif

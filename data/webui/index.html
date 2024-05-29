@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+    <title>ESP32 Joy Tester</title>
+    <meta name="viewport" content="width=device-width, initial-scale=0.7">
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body onload="connect_onclick()">
+    <div class="container">
+        <h2>ESP32 Joy Tester</h2>
+        <div class="temperature">
+            <span class="temperature-label">Joystate:</span> 
+            <span class="temperature-value" id="temperature-value">00</span>
+        </div>
+        <div class="canvas-container">
+            <canvas id="canvas"></canvas>
+        </div>    
+        <div class="websocket">
+            <button class="connect-button" id="bt_connect" onclick="connect_onclick()">Connect</button>
+            <span class="label">WebSocket: <span id="ws_state"><span style="color:blue">CLOSED</span></span></span>
+        </div>
+        <div class="messages" id="messages"></div>
+        <div class="user-input">
+            <input type="text" id="message" placeholder="Type your message...">
+            <button onclick="send_onclick()">Send</button>
+        </div>
+        <div class="sponsor">Sponsored by <a href="https://amazon.com/diyables">DIYables</a></div>
+    </div>
+    <script type="text/javascript" src="./js/index.js"></script>
+</body>
+
+</html>
